@@ -1,6 +1,9 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
+const { randomBytes } = require("crypto");
+const { promisify } = require("util");
+const { transport, makeNiceEmail } = require("../mail");
 
 const Mutation = {
   async createItem(parent, args, ctx, info) {
@@ -73,6 +76,16 @@ const Mutation = {
 
     args.email = args.email.toLowerCase();
 
+    const alreadyRegisteredUser = await ctx.db.query.user({
+      where: {
+        email: args.email
+      }
+    });
+
+    if (alreadyRegisteredUser) {
+      throw new Error("This user has already been taken");
+    }
+
     const password = await bcrypt.hash(args.password, 12);
 
     const user = await ctx.db.mutation.createUser(
@@ -109,7 +122,7 @@ const Mutation = {
     const match = await bcrypt.compare(args.password, user.password);
 
     if (!match) {
-      throw new Error("Invalid Password!");
+      throw new Error("These credentials do not match our records.");
     }
 
     const token = jwt.sign({ userId: user.id }, process.env.APP_SECRET);
@@ -305,6 +318,91 @@ const Mutation = {
     }
 
     return existingCartItem;
+  },
+
+  async requestReset(parent, args, ctx, info) {
+    const user = await ctx.db.query.user({
+      where: {
+        email: args.email
+      }
+    });
+
+    if (!user) {
+      throw new Error("User with such an email does not exist");
+    }
+
+    // generate reset token
+
+    const randomBytesPromisified = promisify(randomBytes);
+    const resetToken = (await randomBytesPromisified(20)).toString("hex");
+    // add resetTokenExpiryTime
+    const resetTokenExpiry = Date.now() + 3600000;
+
+    // update the user with resetToken and expiry
+
+    const updatedUser = await ctx.db.mutation.updateUser({
+      where: {
+        email: args.email
+      },
+      data: {
+        resetToken,
+        resetTokenExpiry
+      }
+    });
+
+    const message = {
+      from: "tracky-tronics@gmail.com",
+      to: user.email,
+      subject: "Password Reset Request",
+      html: makeNiceEmail(`Your Password Reset Token is here!
+      \n\n
+      <a href="${
+        process.env.FRONTEND_URL
+      }/reset?resetToken=${resetToken}">Click Here to Reset</a>`)
+    };
+
+    const mailResponse = await transport.sendMail(message);
+
+    return { message: "Thanks!" };
+  },
+
+  async resetPassword(parent, args, ctx, info) {
+    if (args.password !== args.confirmPassword) {
+      throw new Error("Passwords do not match!");
+    }
+
+    const [user] = await ctx.db.query.users({
+      where: {
+        resetToken: args.resetToken,
+        resetTokenExpiry_gte: Date.now() - 3600000
+      }
+    });
+
+    if (!user) {
+      throw new Error("Token is invalid or expired!");
+    }
+
+    const password = await bcrypt.hash(args.password, 12);
+
+    const updatedUser = await ctx.db.mutation.updateUser({
+      where: {
+        email: user.email
+      },
+      data: {
+        password,
+        resetToken: null,
+        resetTokenExpiry: null
+      }
+    });
+
+    const token = jwt.sign({ userId: user.id }, process.env.APP_SECRET);
+    // We set the jwt as a cookie on the response
+    ctx.response.cookie("token", token, {
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24 * 365
+    });
+
+    return updatedUser;
   }
 };
 

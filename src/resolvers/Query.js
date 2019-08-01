@@ -50,7 +50,6 @@ const Query = {
     if (!ctx.request.userId) {
       throw new Error("You must be signed in to see Orders!");
     }
-
     const orders = await ctx.db.query.orders(
       {
         where: {

@@ -45,4 +45,10 @@ type Mutation {
   updateQuantity(id: ID!): CartItem!
   removeFromCart(id: ID!): CartItem!
   createOrder(token: String!): Order!
+  requestReset(email: String!): SuccessMessage
+  resetPassword(
+    password: String!
+    confirmPassword: String!
+    resetToken: String!
+  ): User!
 }
