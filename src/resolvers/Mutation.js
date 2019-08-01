@@ -1,0 +1,311 @@
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+const stripe = require("stripe")(process.env.STRIPE_SECRET);
+
+const Mutation = {
+  async createItem(parent, args, ctx, info) {
+    if (!ctx.request.userId) {
+      throw new Error("You must be logged in to sell your item!");
+    }
+
+    return await ctx.db.mutation.createItem(
+      {
+        data: {
+          ...args,
+          user: {
+            connect: {
+              id: ctx.request.userId
+            }
+          }
+        }
+      },
+      info
+    );
+  },
+
+  async deleteItem(parent, args, ctx, info) {
+    if (!ctx.request.userId) {
+      throw new Error("You must sign in to complete this operation!");
+    }
+
+    const user = await ctx.db.query.user(
+      {
+        where: {
+          id: ctx.request.userId
+        }
+      },
+      `{id, permissions}`
+    );
+
+    const item = await ctx.db.query.item(
+      {
+        where: {
+          id: args.id
+        }
+      },
+      `{ id title user { id }}`
+    );
+
+    console.log("Useriukas", user);
+
+    const ownsItem = item.user.id === user.id;
+
+    const hasPermissions = user.permissions.some(permission =>
+      ["ADMIN", "ITEMDELETE"].includes(permission)
+    );
+
+    if (!ownsItem && !hasPermissions) {
+      throw new Error("You don't have permissions to perform this operation.");
+    }
+
+    return await ctx.db.mutation.deleteItem(
+      {
+        where: {
+          id: args.id
+        }
+      },
+      info
+    );
+  },
+
+  async signup(parent, args, ctx, info) {
+    // Make email lowercase to avoid future collisions
+
+    args.email = args.email.toLowerCase();
+
+    const password = await bcrypt.hash(args.password, 12);
+
+    const user = await ctx.db.mutation.createUser(
+      {
+        data: {
+          ...args,
+          password,
+          permissions: { set: ["USER"] }
+        }
+      },
+      info
+    );
+
+    const token = jwt.sign({ userId: user.id }, process.env.APP_SECRET);
+    // We set the jwt as a cookie on the response
+    ctx.response.cookie("token", token, {
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24 * 365
+    });
+
+    return user;
+  },
+
+  async signin(parent, args, ctx, info) {
+    const user = await ctx.db.query.user({
+      where: {
+        email: args.email
+      }
+    });
+
+    if (!user) {
+      throw new Error(`No such user found for email ${args.email}`);
+    }
+    const match = await bcrypt.compare(args.password, user.password);
+
+    if (!match) {
+      throw new Error("Invalid Password!");
+    }
+
+    const token = jwt.sign({ userId: user.id }, process.env.APP_SECRET);
+    // We set the jwt as a cookie on the response
+    ctx.response.cookie("token", token, {
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24 * 365
+    });
+
+    return user;
+  },
+
+  async addToCart(parent, args, ctx, info) {
+    if (!ctx.request.userId) {
+      throw new Error("You must be logged to add items to the cart!");
+    }
+
+    const [existingCartItem] = await ctx.db.query.cartItems({
+      where: {
+        user: { id: ctx.request.userId },
+        item: {
+          id: args.id
+        }
+      }
+    });
+
+    // if cartItem  is already in the cart then just update quantity of the cartItem
+
+    if (existingCartItem) {
+      return await ctx.db.mutation.updateCartItem(
+        {
+          where: {
+            id: existingCartItem.id
+          },
+          data: {
+            quantity: existingCartItem.quantity + 1
+          }
+        },
+        info
+      );
+    }
+
+    // if not found then just create new cart item. Default quantity value is set to 1 in the db
+
+    return await ctx.db.mutation.createCartItem({
+      data: {
+        user: {
+          connect: {
+            id: ctx.request.userId
+          }
+        },
+        item: {
+          connect: {
+            id: args.id
+          }
+        }
+      }
+    });
+  },
+  async removeFromCart(parent, args, ctx, info) {
+    return await ctx.db.mutation.deleteCartItem({
+      where: {
+        id: args.id
+      }
+    });
+  },
+  async signout(parent, args, ctx, info) {
+    ctx.response.clearCookie("token");
+    return { message: "See you next time!" };
+  },
+
+  async createOrder(parent, args, ctx, info) {
+    // check if user signed in
+    if (!ctx.request.userId) {
+      throw new Error("You must be signed in to complete the order!");
+    }
+
+    // Fetch user
+
+    const user = await ctx.db.query.user(
+      {
+        where: {
+          id: ctx.request.userId
+        }
+      },
+      `
+      {
+      id
+      name
+      email
+      cart {
+        id
+        quantity
+        item {
+          id
+          title
+          description
+          price
+          image
+          largeImage
+        }
+      }
+    }
+    `
+    );
+
+    // console.log(`user: ${user}`);
+
+    // recalculate total  price otherwise user can change total price on front end
+    const amount = user.cart.reduce(
+      (acc, cartItem) => acc + cartItem.quantity * cartItem.item.price,
+      0
+    );
+
+    console.log(amount);
+
+    // charge the amount using stripe
+
+    const charge = await stripe.charges.create({
+      amount: amount,
+      currency: "eur",
+      source: args.token,
+      description: `Charge for ${user.email}`
+    });
+
+    console.log(`charge: ${charge}`);
+
+    // create order items
+    const orderItems = user.cart.map(cartItem => {
+      const orderItem = {
+        ...cartItem.item,
+        quantity: cartItem.quantity,
+        user: {
+          connect: {
+            id: user.id
+          }
+        }
+      };
+      delete orderItem.id;
+
+      return orderItem;
+    });
+
+    console.log(`orderItems: ${orderItems}`);
+
+    const order = await ctx.db.mutation.createOrder({
+      data: {
+        total: charge.amount,
+        charge: charge.id,
+        user: {
+          connect: {
+            id: user.id
+          }
+        },
+        items: {
+          create: orderItems
+        }
+      }
+    });
+
+    const cartItemsId = user.cart.map(cartItem => cartItem.id);
+
+    await ctx.db.mutation.deleteManyCartItems({
+      where: {
+        id_in: cartItemsId
+      }
+    });
+
+    // clear existing cart so that once order is completed no items would on the cart
+
+    return order;
+  },
+  async updateQuantity(parent, args, ctx, info) {
+    if (!ctx.request.userId) {
+      throw new Error("You must be logged in!");
+    }
+
+    const existingCartItem = await ctx.db.query.cartItem({
+      where: {
+        id: args.id
+      }
+    });
+
+    if (existingCartItem.quantity !== 0) {
+      return await ctx.db.mutation.updateCartItem({
+        where: {
+          id: existingCartItem.id
+        },
+        data: {
+          quantity: existingCartItem.quantity - 1
+        }
+      });
+    }
+
+    return existingCartItem;
+  }
+};
+
+module.exports = Mutation;
