@@ -16,8 +16,14 @@ type User {
 
 type Query {
   users: [User]!
-  items(where: ItemWhereInput): [Item]!
+  items(
+    where: ItemWhereInput
+    orderBy: ItemOrderByInput
+    first: Int
+    skip: Int
+  ): [Item]!
   item(where: ItemWhereUniqueInput!): Item
+  itemsConnection(where: ItemWhereInput): ItemConnection!
   me: User
   order(id: ID!): Order
   orders(orderBy: OrderOrderByInput): [Order!]!
