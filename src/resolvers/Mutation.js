@@ -356,9 +356,7 @@ const Mutation = {
       subject: "Password Reset Request",
       html: makeNiceEmail(`Your Password Reset Token is here!
       \n\n
-      <a href="${
-        process.env.FRONTEND_URL
-      }/reset?resetToken=${resetToken}">Click Here to Reset</a>`)
+      <a href="${process.env.FRONTEND_URL}/reset?resetToken=${resetToken}">Click Here to Reset</a>`)
     };
 
     const mailResponse = await transport.sendMail(message);
@@ -403,6 +401,25 @@ const Mutation = {
     });
 
     return updatedUser;
+  },
+  async contactUsRequest(parent, args, ctx, info) {
+    console.log("Hey I came to backed!!");
+    const message = {
+      from: args.email,
+      to: `${process.env.SUPPORT_EMAIL}`,
+      subject: "Customer Contacted",
+      html: makeNiceEmail(`${args.message}
+      \n\n
+      <p>${args.phone}</p>`)
+    };
+
+    const mailResponse = await transport.sendMail(message);
+
+    console.log(mailResponse);
+
+    return {
+      message: "Your request has been sent! Our team will contact you shortly."
+    };
   }
 };
 

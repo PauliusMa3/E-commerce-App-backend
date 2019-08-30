@@ -57,4 +57,10 @@ type Mutation {
     confirmPassword: String!
     resetToken: String!
   ): User!
+  contactUsRequest(
+    name: String!
+    email: String!
+    phone: String!
+    message: String!
+  ): SuccessMessage
 }
