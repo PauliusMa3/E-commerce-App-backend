@@ -49,8 +49,6 @@ const Mutation = {
       `{ id title user { id }}`
     );
 
-    console.log("Useriukas", user);
-
     const ownsItem = item.user.id === user.id;
 
     const hasPermissions = user.permissions.some(permission =>
@@ -229,15 +227,12 @@ const Mutation = {
     `
     );
 
-    // console.log(`user: ${user}`);
-
     // recalculate total  price otherwise user can change total price on front end
     const amount = user.cart.reduce(
       (acc, cartItem) => acc + cartItem.quantity * cartItem.item.price,
       0
     );
-
-    console.log(amount);
+  
 
     // charge the amount using stripe
 
@@ -247,8 +242,6 @@ const Mutation = {
       source: args.token,
       description: `Charge for ${user.email}`
     });
-
-    console.log(`charge: ${charge}`);
 
     // create order items
     const orderItems = user.cart.map(cartItem => {
@@ -265,8 +258,6 @@ const Mutation = {
 
       return orderItem;
     });
-
-    console.log(`orderItems: ${orderItems}`);
 
     const order = await ctx.db.mutation.createOrder({
       data: {
@@ -403,7 +394,6 @@ const Mutation = {
     return updatedUser;
   },
   async contactUsRequest(parent, args, ctx, info) {
-    console.log("Hey I came to backed!!");
     const message = {
       from: args.email,
       to: `${process.env.SUPPORT_EMAIL}`,
@@ -415,11 +405,32 @@ const Mutation = {
 
     const mailResponse = await transport.sendMail(message);
 
-    console.log(mailResponse);
 
     return {
       message: "Your request has been sent! Our team will contact you shortly."
     };
+  },
+  async addReview(parent, { itemId, text, rating }, ctx, info) {
+    if (!ctx.request.userId) {
+      throw new Error("You must be logged in to write a review!");
+    }
+
+    return await ctx.db.mutation.createReview({
+      data: {
+        author: {
+          connect: {
+            id: ctx.request.userId
+          }
+        },
+        item: {
+          connect: {
+            id: itemId
+          }
+        },
+        text,
+        rating
+      }
+    });
   }
 };
 

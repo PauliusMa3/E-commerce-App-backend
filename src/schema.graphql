@@ -63,4 +63,5 @@ type Mutation {
     phone: String!
     message: String!
   ): SuccessMessage
+  addReview(itemId: String! text: String!, rating: Int!): Review!
 }

@@ -14,6 +14,10 @@ type AggregateOrderItem {
   count: Int!
 }
 
+type AggregateReview {
+  count: Int!
+}
+
 type AggregateUser {
   count: Int!
 }
@@ -207,6 +211,7 @@ type Item {
   image: String
   largeImage: String
   user: User!
+  reviews(where: ReviewWhereInput, orderBy: ReviewOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Review!]
 }
 
 type ItemConnection {
@@ -223,11 +228,27 @@ input ItemCreateInput {
   image: String
   largeImage: String
   user: UserCreateOneInput!
+  reviews: ReviewCreateManyWithoutItemInput
 }
 
 input ItemCreateOneInput {
   create: ItemCreateInput
   connect: ItemWhereUniqueInput
+}
+
+input ItemCreateOneWithoutReviewsInput {
+  create: ItemCreateWithoutReviewsInput
+  connect: ItemWhereUniqueInput
+}
+
+input ItemCreateWithoutReviewsInput {
+  id: ID
+  title: String!
+  description: String!
+  price: Int!
+  image: String
+  largeImage: String
+  user: UserCreateOneInput!
 }
 
 type ItemEdge {
@@ -284,6 +305,7 @@ input ItemUpdateDataInput {
   image: String
   largeImage: String
   user: UserUpdateOneRequiredInput
+  reviews: ReviewUpdateManyWithoutItemInput
 }
 
 input ItemUpdateInput {
@@ -293,6 +315,7 @@ input ItemUpdateInput {
   image: String
   largeImage: String
   user: UserUpdateOneRequiredInput
+  reviews: ReviewUpdateManyWithoutItemInput
 }
 
 input ItemUpdateManyMutationInput {
@@ -312,9 +335,30 @@ input ItemUpdateOneInput {
   connect: ItemWhereUniqueInput
 }
 
+input ItemUpdateOneRequiredWithoutReviewsInput {
+  create: ItemCreateWithoutReviewsInput
+  update: ItemUpdateWithoutReviewsDataInput
+  upsert: ItemUpsertWithoutReviewsInput
+  connect: ItemWhereUniqueInput
+}
+
+input ItemUpdateWithoutReviewsDataInput {
+  title: String
+  description: String
+  price: Int
+  image: String
+  largeImage: String
+  user: UserUpdateOneRequiredInput
+}
+
 input ItemUpsertNestedInput {
   update: ItemUpdateDataInput!
   create: ItemCreateInput!
+}
+
+input ItemUpsertWithoutReviewsInput {
+  update: ItemUpdateWithoutReviewsDataInput!
+  create: ItemCreateWithoutReviewsInput!
 }
 
 input ItemWhereInput {
@@ -397,6 +441,9 @@ input ItemWhereInput {
   largeImage_ends_with: String
   largeImage_not_ends_with: String
   user: UserWhereInput
+  reviews_every: ReviewWhereInput
+  reviews_some: ReviewWhereInput
+  reviews_none: ReviewWhereInput
   AND: [ItemWhereInput!]
   OR: [ItemWhereInput!]
   NOT: [ItemWhereInput!]
@@ -410,74 +457,39 @@ scalar Long
 
 type Mutation {
   createCartItem(data: CartItemCreateInput!): CartItem!
-  updateCartItem(
-    data: CartItemUpdateInput!
-    where: CartItemWhereUniqueInput!
-  ): CartItem
-  updateManyCartItems(
-    data: CartItemUpdateManyMutationInput!
-    where: CartItemWhereInput
-  ): BatchPayload!
-  upsertCartItem(
-    where: CartItemWhereUniqueInput!
-    create: CartItemCreateInput!
-    update: CartItemUpdateInput!
-  ): CartItem!
+  updateCartItem(data: CartItemUpdateInput!, where: CartItemWhereUniqueInput!): CartItem
+  updateManyCartItems(data: CartItemUpdateManyMutationInput!, where: CartItemWhereInput): BatchPayload!
+  upsertCartItem(where: CartItemWhereUniqueInput!, create: CartItemCreateInput!, update: CartItemUpdateInput!): CartItem!
   deleteCartItem(where: CartItemWhereUniqueInput!): CartItem
   deleteManyCartItems(where: CartItemWhereInput): BatchPayload!
   createItem(data: ItemCreateInput!): Item!
   updateItem(data: ItemUpdateInput!, where: ItemWhereUniqueInput!): Item
-  updateManyItems(
-    data: ItemUpdateManyMutationInput!
-    where: ItemWhereInput
-  ): BatchPayload!
-  upsertItem(
-    where: ItemWhereUniqueInput!
-    create: ItemCreateInput!
-    update: ItemUpdateInput!
-  ): Item!
+  updateManyItems(data: ItemUpdateManyMutationInput!, where: ItemWhereInput): BatchPayload!
+  upsertItem(where: ItemWhereUniqueInput!, create: ItemCreateInput!, update: ItemUpdateInput!): Item!
   deleteItem(where: ItemWhereUniqueInput!): Item
   deleteManyItems(where: ItemWhereInput): BatchPayload!
   createOrder(data: OrderCreateInput!): Order!
   updateOrder(data: OrderUpdateInput!, where: OrderWhereUniqueInput!): Order
-  updateManyOrders(
-    data: OrderUpdateManyMutationInput!
-    where: OrderWhereInput
-  ): BatchPayload!
-  upsertOrder(
-    where: OrderWhereUniqueInput!
-    create: OrderCreateInput!
-    update: OrderUpdateInput!
-  ): Order!
+  updateManyOrders(data: OrderUpdateManyMutationInput!, where: OrderWhereInput): BatchPayload!
+  upsertOrder(where: OrderWhereUniqueInput!, create: OrderCreateInput!, update: OrderUpdateInput!): Order!
   deleteOrder(where: OrderWhereUniqueInput!): Order
   deleteManyOrders(where: OrderWhereInput): BatchPayload!
   createOrderItem(data: OrderItemCreateInput!): OrderItem!
-  updateOrderItem(
-    data: OrderItemUpdateInput!
-    where: OrderItemWhereUniqueInput!
-  ): OrderItem
-  updateManyOrderItems(
-    data: OrderItemUpdateManyMutationInput!
-    where: OrderItemWhereInput
-  ): BatchPayload!
-  upsertOrderItem(
-    where: OrderItemWhereUniqueInput!
-    create: OrderItemCreateInput!
-    update: OrderItemUpdateInput!
-  ): OrderItem!
+  updateOrderItem(data: OrderItemUpdateInput!, where: OrderItemWhereUniqueInput!): OrderItem
+  updateManyOrderItems(data: OrderItemUpdateManyMutationInput!, where: OrderItemWhereInput): BatchPayload!
+  upsertOrderItem(where: OrderItemWhereUniqueInput!, create: OrderItemCreateInput!, update: OrderItemUpdateInput!): OrderItem!
   deleteOrderItem(where: OrderItemWhereUniqueInput!): OrderItem
   deleteManyOrderItems(where: OrderItemWhereInput): BatchPayload!
+  createReview(data: ReviewCreateInput!): Review!
+  updateReview(data: ReviewUpdateInput!, where: ReviewWhereUniqueInput!): Review
+  updateManyReviews(data: ReviewUpdateManyMutationInput!, where: ReviewWhereInput): BatchPayload!
+  upsertReview(where: ReviewWhereUniqueInput!, create: ReviewCreateInput!, update: ReviewUpdateInput!): Review!
+  deleteReview(where: ReviewWhereUniqueInput!): Review
+  deleteManyReviews(where: ReviewWhereInput): BatchPayload!
   createUser(data: UserCreateInput!): User!
   updateUser(data: UserUpdateInput!, where: UserWhereUniqueInput!): User
-  updateManyUsers(
-    data: UserUpdateManyMutationInput!
-    where: UserWhereInput
-  ): BatchPayload!
-  upsertUser(
-    where: UserWhereUniqueInput!
-    create: UserCreateInput!
-    update: UserUpdateInput!
-  ): User!
+  updateManyUsers(data: UserUpdateManyMutationInput!, where: UserWhereInput): BatchPayload!
+  upsertUser(where: UserWhereUniqueInput!, create: UserCreateInput!, update: UserUpdateInput!): User!
   deleteUser(where: UserWhereUniqueInput!): User
   deleteManyUsers(where: UserWhereInput): BatchPayload!
 }
@@ -494,15 +506,7 @@ interface Node {
 
 type Order {
   id: ID!
-  items(
-    where: OrderItemWhereInput
-    orderBy: OrderItemOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): [OrderItem!]
+  items(where: OrderItemWhereInput, orderBy: OrderItemOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [OrderItem!]
   user: User!
   total: Int!
   charge: String!
@@ -1002,110 +1006,265 @@ enum Permission {
 
 type Query {
   cartItem(where: CartItemWhereUniqueInput!): CartItem
-  cartItems(
-    where: CartItemWhereInput
-    orderBy: CartItemOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): [CartItem]!
-  cartItemsConnection(
-    where: CartItemWhereInput
-    orderBy: CartItemOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): CartItemConnection!
+  cartItems(where: CartItemWhereInput, orderBy: CartItemOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [CartItem]!
+  cartItemsConnection(where: CartItemWhereInput, orderBy: CartItemOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): CartItemConnection!
   item(where: ItemWhereUniqueInput!): Item
-  items(
-    where: ItemWhereInput
-    orderBy: ItemOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): [Item]!
-  itemsConnection(
-    where: ItemWhereInput
-    orderBy: ItemOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): ItemConnection!
+  items(where: ItemWhereInput, orderBy: ItemOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Item]!
+  itemsConnection(where: ItemWhereInput, orderBy: ItemOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): ItemConnection!
   order(where: OrderWhereUniqueInput!): Order
-  orders(
-    where: OrderWhereInput
-    orderBy: OrderOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): [Order]!
-  ordersConnection(
-    where: OrderWhereInput
-    orderBy: OrderOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): OrderConnection!
+  orders(where: OrderWhereInput, orderBy: OrderOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Order]!
+  ordersConnection(where: OrderWhereInput, orderBy: OrderOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): OrderConnection!
   orderItem(where: OrderItemWhereUniqueInput!): OrderItem
-  orderItems(
-    where: OrderItemWhereInput
-    orderBy: OrderItemOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): [OrderItem]!
-  orderItemsConnection(
-    where: OrderItemWhereInput
-    orderBy: OrderItemOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): OrderItemConnection!
+  orderItems(where: OrderItemWhereInput, orderBy: OrderItemOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [OrderItem]!
+  orderItemsConnection(where: OrderItemWhereInput, orderBy: OrderItemOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): OrderItemConnection!
+  review(where: ReviewWhereUniqueInput!): Review
+  reviews(where: ReviewWhereInput, orderBy: ReviewOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [Review]!
+  reviewsConnection(where: ReviewWhereInput, orderBy: ReviewOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): ReviewConnection!
   user(where: UserWhereUniqueInput!): User
-  users(
-    where: UserWhereInput
-    orderBy: UserOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): [User]!
-  usersConnection(
-    where: UserWhereInput
-    orderBy: UserOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): UserConnection!
+  users(where: UserWhereInput, orderBy: UserOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [User]!
+  usersConnection(where: UserWhereInput, orderBy: UserOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): UserConnection!
   node(id: ID!): Node
+}
+
+type Review {
+  id: ID!
+  author: User!
+  text: String
+  rating: Int
+  item: Item!
+  createdAt: DateTime!
+}
+
+type ReviewConnection {
+  pageInfo: PageInfo!
+  edges: [ReviewEdge]!
+  aggregate: AggregateReview!
+}
+
+input ReviewCreateInput {
+  id: ID
+  author: UserCreateOneInput!
+  text: String
+  rating: Int
+  item: ItemCreateOneWithoutReviewsInput!
+}
+
+input ReviewCreateManyWithoutItemInput {
+  create: [ReviewCreateWithoutItemInput!]
+  connect: [ReviewWhereUniqueInput!]
+}
+
+input ReviewCreateWithoutItemInput {
+  id: ID
+  author: UserCreateOneInput!
+  text: String
+  rating: Int
+}
+
+type ReviewEdge {
+  node: Review!
+  cursor: String!
+}
+
+enum ReviewOrderByInput {
+  id_ASC
+  id_DESC
+  text_ASC
+  text_DESC
+  rating_ASC
+  rating_DESC
+  createdAt_ASC
+  createdAt_DESC
+}
+
+type ReviewPreviousValues {
+  id: ID!
+  text: String
+  rating: Int
+  createdAt: DateTime!
+}
+
+input ReviewScalarWhereInput {
+  id: ID
+  id_not: ID
+  id_in: [ID!]
+  id_not_in: [ID!]
+  id_lt: ID
+  id_lte: ID
+  id_gt: ID
+  id_gte: ID
+  id_contains: ID
+  id_not_contains: ID
+  id_starts_with: ID
+  id_not_starts_with: ID
+  id_ends_with: ID
+  id_not_ends_with: ID
+  text: String
+  text_not: String
+  text_in: [String!]
+  text_not_in: [String!]
+  text_lt: String
+  text_lte: String
+  text_gt: String
+  text_gte: String
+  text_contains: String
+  text_not_contains: String
+  text_starts_with: String
+  text_not_starts_with: String
+  text_ends_with: String
+  text_not_ends_with: String
+  rating: Int
+  rating_not: Int
+  rating_in: [Int!]
+  rating_not_in: [Int!]
+  rating_lt: Int
+  rating_lte: Int
+  rating_gt: Int
+  rating_gte: Int
+  createdAt: DateTime
+  createdAt_not: DateTime
+  createdAt_in: [DateTime!]
+  createdAt_not_in: [DateTime!]
+  createdAt_lt: DateTime
+  createdAt_lte: DateTime
+  createdAt_gt: DateTime
+  createdAt_gte: DateTime
+  AND: [ReviewScalarWhereInput!]
+  OR: [ReviewScalarWhereInput!]
+  NOT: [ReviewScalarWhereInput!]
+}
+
+type ReviewSubscriptionPayload {
+  mutation: MutationType!
+  node: Review
+  updatedFields: [String!]
+  previousValues: ReviewPreviousValues
+}
+
+input ReviewSubscriptionWhereInput {
+  mutation_in: [MutationType!]
+  updatedFields_contains: String
+  updatedFields_contains_every: [String!]
+  updatedFields_contains_some: [String!]
+  node: ReviewWhereInput
+  AND: [ReviewSubscriptionWhereInput!]
+  OR: [ReviewSubscriptionWhereInput!]
+  NOT: [ReviewSubscriptionWhereInput!]
+}
+
+input ReviewUpdateInput {
+  author: UserUpdateOneRequiredInput
+  text: String
+  rating: Int
+  item: ItemUpdateOneRequiredWithoutReviewsInput
+}
+
+input ReviewUpdateManyDataInput {
+  text: String
+  rating: Int
+}
+
+input ReviewUpdateManyMutationInput {
+  text: String
+  rating: Int
+}
+
+input ReviewUpdateManyWithoutItemInput {
+  create: [ReviewCreateWithoutItemInput!]
+  delete: [ReviewWhereUniqueInput!]
+  connect: [ReviewWhereUniqueInput!]
+  set: [ReviewWhereUniqueInput!]
+  disconnect: [ReviewWhereUniqueInput!]
+  update: [ReviewUpdateWithWhereUniqueWithoutItemInput!]
+  upsert: [ReviewUpsertWithWhereUniqueWithoutItemInput!]
+  deleteMany: [ReviewScalarWhereInput!]
+  updateMany: [ReviewUpdateManyWithWhereNestedInput!]
+}
+
+input ReviewUpdateManyWithWhereNestedInput {
+  where: ReviewScalarWhereInput!
+  data: ReviewUpdateManyDataInput!
+}
+
+input ReviewUpdateWithoutItemDataInput {
+  author: UserUpdateOneRequiredInput
+  text: String
+  rating: Int
+}
+
+input ReviewUpdateWithWhereUniqueWithoutItemInput {
+  where: ReviewWhereUniqueInput!
+  data: ReviewUpdateWithoutItemDataInput!
+}
+
+input ReviewUpsertWithWhereUniqueWithoutItemInput {
+  where: ReviewWhereUniqueInput!
+  update: ReviewUpdateWithoutItemDataInput!
+  create: ReviewCreateWithoutItemInput!
+}
+
+input ReviewWhereInput {
+  id: ID
+  id_not: ID
+  id_in: [ID!]
+  id_not_in: [ID!]
+  id_lt: ID
+  id_lte: ID
+  id_gt: ID
+  id_gte: ID
+  id_contains: ID
+  id_not_contains: ID
+  id_starts_with: ID
+  id_not_starts_with: ID
+  id_ends_with: ID
+  id_not_ends_with: ID
+  author: UserWhereInput
+  text: String
+  text_not: String
+  text_in: [String!]
+  text_not_in: [String!]
+  text_lt: String
+  text_lte: String
+  text_gt: String
+  text_gte: String
+  text_contains: String
+  text_not_contains: String
+  text_starts_with: String
+  text_not_starts_with: String
+  text_ends_with: String
+  text_not_ends_with: String
+  rating: Int
+  rating_not: Int
+  rating_in: [Int!]
+  rating_not_in: [Int!]
+  rating_lt: Int
+  rating_lte: Int
+  rating_gt: Int
+  rating_gte: Int
+  item: ItemWhereInput
+  createdAt: DateTime
+  createdAt_not: DateTime
+  createdAt_in: [DateTime!]
+  createdAt_not_in: [DateTime!]
+  createdAt_lt: DateTime
+  createdAt_lte: DateTime
+  createdAt_gt: DateTime
+  createdAt_gte: DateTime
+  AND: [ReviewWhereInput!]
+  OR: [ReviewWhereInput!]
+  NOT: [ReviewWhereInput!]
+}
+
+input ReviewWhereUniqueInput {
+  id: ID
 }
 
 type Subscription {
   cartItem(where: CartItemSubscriptionWhereInput): CartItemSubscriptionPayload
   item(where: ItemSubscriptionWhereInput): ItemSubscriptionPayload
   order(where: OrderSubscriptionWhereInput): OrderSubscriptionPayload
-  orderItem(
-    where: OrderItemSubscriptionWhereInput
-  ): OrderItemSubscriptionPayload
+  orderItem(where: OrderItemSubscriptionWhereInput): OrderItemSubscriptionPayload
+  review(where: ReviewSubscriptionWhereInput): ReviewSubscriptionPayload
   user(where: UserSubscriptionWhereInput): UserSubscriptionPayload
 }
 
@@ -1118,15 +1277,7 @@ type User {
   resetToken: String
   resetTokenExpiry: Float
   permissions: [Permission!]!
-  cart(
-    where: CartItemWhereInput
-    orderBy: CartItemOrderByInput
-    skip: Int
-    after: String
-    before: String
-    first: Int
-    last: Int
-  ): [CartItem!]
+  cart(where: CartItemWhereInput, orderBy: CartItemOrderByInput, skip: Int, after: String, before: String, first: Int, last: Int): [CartItem!]
 }
 
 type UserConnection {
