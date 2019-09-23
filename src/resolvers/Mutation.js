@@ -69,6 +69,57 @@ const Mutation = {
     );
   },
 
+  async editItem(parent, args, ctx, info) {
+    if (!ctx.request.userId) {
+      throw new Error("You must be logged to do this operation!");
+    }
+
+    const user = await ctx.db.query.user(
+      {
+        where: {
+          id: ctx.request.userId
+        }
+      },
+      `{id, permissions}`
+    );
+
+    const item = await ctx.db.query.item(
+      {
+        where: {
+          id: args.id
+        }
+      },
+      `{id title user { id }}`
+    );
+
+    const ownsItem = item.user.id === user.id;
+
+    console.log("user permissions: ", user.permissions);
+    const hasPermissions = user.permissions.some(permission =>
+      ["ADMIN", "ITEMUPDATE"].includes(permission)
+    );
+
+    if (!hasPermissions && !ownsItem) {
+      throw new Error("You don't have permission to do this!");
+    }
+
+    const { title, price, description } = args;
+
+    return await ctx.db.mutation.updateItem(
+      {
+        where: {
+          id: item.id
+        },
+        data: {
+          title,
+          description,
+          price
+        }
+      },
+      info
+    );
+  },
+
   async signup(parent, args, ctx, info) {
     // Make email lowercase to avoid future collisions
 
@@ -232,7 +283,6 @@ const Mutation = {
       (acc, cartItem) => acc + cartItem.quantity * cartItem.item.price,
       0
     );
-  
 
     // charge the amount using stripe
 
@@ -404,7 +454,6 @@ const Mutation = {
     };
 
     const mailResponse = await transport.sendMail(message);
-
 
     return {
       message: "Your request has been sent! Our team will contact you shortly."

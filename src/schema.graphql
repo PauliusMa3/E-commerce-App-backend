@@ -38,7 +38,7 @@ type Mutation {
     largeImage: String
   ): Item!
   deleteItem(id: ID!): Item
-  updateItem(id: ID!, title: String, description: String, price: Int): Item!
+  editItem(id: ID!, title: String, description: String, price: Int): Item!
   signup(
     name: String!
     surname: String!
